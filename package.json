@@ -1,0 +1,11 @@
+{
+  "name": "termux-code",
+  "version": "1.0.0",
+  "description": "Termux-Code - lightweight IDE for Termux (patched)",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "author": "Paong & Evelyn",
+  "license": "MIT"
+}
