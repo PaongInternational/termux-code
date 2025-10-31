@@ -1,0 +1,174 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=2,minimum-scale=1,viewport-fit=cover">
+<title>termux-code v1.0.0</title>
+<link rel="icon" href="https://cdn.yupra.my.id/yp/qm656enk.jpg">
+<style>
+:root{--bg:#0b1220;--card:#0f1724;--accent:#0f9cf0;--text:#e6eef6;--muted:#98a8b8}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:Inter,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%;display:flex;min-height:100vh;overflow:hidden}
+.sidebar{width:52px;background:linear-gradient(180deg,#071021,#051018);display:flex;flex-direction:column;align-items:center;padding:10px;gap:8px;border-right:1px solid rgba(255,255,255,0.03)}
+.panel-left{width:260px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);padding:10px;display:flex;flex-direction:column;gap:10px;border-right:1px solid rgba(255,255,255,0.02)}
+.app{display:flex;flex:1;min-width:0;overflow:hidden}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh}
+.topbar{height:52px;display:flex;align-items:center;gap:10px;padding:8px 12px;background: linear-gradient(90deg, rgba(255,255,255,0.01), transparent);border-bottom:1px solid rgba(255,255,255,0.02)}
+.tabbar{height:40px;display:flex;align-items:center;gap:6px;padding:6px 10px;background: rgba(0,0,0,0.03);border-bottom:1px solid rgba(255,255,255,0.01);overflow:auto;white-space:nowrap}
+.editor-wrap{display:flex;flex:1;min-height:0;gap:12px;padding:12px}
+#editor{flex:1;border-radius:8px;overflow:hidden;min-width:0;border:1px solid rgba(255,255,255,0.02);background:#07101a;display:flex;flex-direction:column}
+.right{width:380px;display:flex;flex-direction:column;gap:10px;min-width:240px}
+.card{background:var(--card);border-radius:8px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.02)}
+.btn{background:var(--accent);color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:15px}
+.icon-btn{background:transparent;color:var(--muted);border:none;padding:8px;border-radius:8px;cursor:pointer;min-width:36px;min-height:36px}
+input,select,button,textarea{font-size:16px}
+.CodeMirror{height:100%!important;background:transparent}
+.statusbar{height:34px;display:flex;align-items:center;padding:6px 12px;border-top:1px solid rgba(255,255,255,0.02);background:linear-gradient(180deg,transparent,rgba(0,0,0,0.02))}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.13/lib/codemirror.css">
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.13/lib/codemirror.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.13/mode/htmlmixed/htmlmixed.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="sidebar" role="navigation" aria-label="Main">
+    <img src="https://cdn.yupra.my.id/yp/qm656enk.jpg" alt="logo" style="width:36px;border-radius:6px">
+    <button class="icon-btn" id="explBtn" title="Explorer">📁</button>
+    <button class="icon-btn" id="gitLoginBtn" title="Login GitHub">🔐</button>
+    <button class="icon-btn" id="gitPanelBtn" title="Git Panel">🔁</button>
+    <button class="icon-btn" id="pluginsBtn" title="Plugins">🧩</button>
+    <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+  </div>
+
+  <div class="app">
+    <div class="panel-left" aria-hidden="false">
+      <div style="display:flex;align-items:center;gap:8px"><strong>Projects</strong><button class="btn" id="addProject" style="margin-left:auto">New</button></div>
+      <div id="projectsList" style="overflow:auto"></div>
+      <div style="margin-top:8px"><strong>Plugins</strong><div id="pluginsList"></div></div>
+    </div>
+
+    <div class="main">
+      <div class="topbar">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="newFileBtn">New File</button>
+          <button class="btn" id="saveBtn">Save</button>
+          <button class="btn" id="uploadBtn">Upload</button>
+          <button class="btn" id="previewBtn">Preview</button>
+          <button class="btn" id="runBtn">Run</button>
+          <button class="btn" id="cloneBtn">Clone Repo</button>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <label class="muted">Theme</label>
+          <select id="themeSel" style="background:transparent;border-radius:6px;padding:6px;color:var(--text);border:1px solid rgba(255,255,255,0.02)">
+            <option value="dark">Dark</option><option value="light">Light</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tabbar" id="tabbar"></div>
+
+      <div class="editor-wrap">
+        <div id="editor" class="card">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid rgba(255,255,255,0.02)">
+            <div class="muted">File: <span id="currentFile">index.html</span></div>
+            <div style="margin-left:auto" class="muted">Project: <span id="currentProject">default</span></div>
+          </div>
+          <div class="cm-container" style="flex:1;min-height:0"><textarea id="code"></textarea></div>
+        </div>
+
+        <div class="right">
+          <div class="card">
+            <strong>Preview</strong>
+            <iframe id="previewFrame" class="preview" style="width:100%;height:220px;border:0;border-radius:6px;background:#fff"></iframe>
+            <div style="margin-top:8px;display:flex;gap:8px"><button class="btn" id="openPreviewTab">Open Preview in New Tab</button></div>
+          </div>
+
+          <div class="card">
+            <strong>Console</strong>
+            <div id="console" class="console" style="height:160px;overflow:auto;font-family:ui-monospace,monospace;background:#021019;padding:8px;border-radius:6px;color:#9fb2c9">Waiting...</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input id="cmdInput" placeholder="Run command (e.g. python3 hello.py)" style="flex:1;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)">
+              <button class="btn" id="execBtn">Exec</button>
+            </div>
+          </div>
+
+          <div class="card" id="gitPanel" style="display:none">
+            <strong>Git</strong>
+            <div style="margin-top:8px">
+              <input id="cloneUrl" placeholder="https://github.com/owner/repo.git" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)">
+              <button class="btn" id="doClone" style="margin-top:8px">Clone to Project</button>
+              <button class="btn" id="doPush" style="margin-top:8px">Commit & Push</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="statusbar"><div class="muted">termux-code • v1.0.0 • Paong & Evelyn</div><div style="margin-left:auto" id="statusMsg" class="muted">Ready</div></div>
+    </div>
+  </div>
+
+<script>
+// Editor init (CodeMirror)
+var editor = CodeMirror.fromTextArea(document.getElementById('code'), { lineNumbers:true, mode:'htmlmixed', theme:'default' });
+editor.setSize('100%','100%');
+const PROJECTS_KEY='TC_PROJECTS', FS_PREFIX='TC_FS_';
+if(!JSON.parse(localStorage.getItem(PROJECTS_KEY)||'[]').length){ localStorage.setItem(PROJECTS_KEY, JSON.stringify(['default'])); localStorage.setItem(FS_PREFIX+'default', JSON.stringify({'index.html':'<!doctype html>\n<html>\n<body>\n<h1>termux-code</h1>\n</body>\n</html>'})); }
+function renderProjects(){ const c=document.getElementById('projectsList'); c.innerHTML=''; JSON.parse(localStorage.getItem(PROJECTS_KEY)||'[]').forEach(p=>{ const d=document.createElement('div'); d.textContent=p; d.style.padding='8px'; d.style.borderBottom='1px solid rgba(255,255,255,0.02)'; d.onclick=()=>openProject(p); c.appendChild(d); }); }
+renderProjects();
+function openProject(name){ const fs=JSON.parse(localStorage.getItem(FS_PREFIX+name)||'{}'); const first=Object.keys(fs)[0]||'index.html'; editor.setValue(fs[first]||''); window.currentProject=name; window.currentFile=first; document.getElementById('currentProject').innerText=name; document.getElementById('currentFile').innerText=first; setStatus('Opened '+name); }
+openProject('default');
+
+// New file
+document.getElementById('newFileBtn').onclick = async ()=>{
+  const name = prompt('New file name (eg: index.html)'); if(!name) return;
+  const proj = window.currentProject||'default'; const fs=JSON.parse(localStorage.getItem(FS_PREFIX+proj)||'{}'); fs[name] = '<!doctype html>\n<html>\n<body>\n<h1>New File</h1>\n</body>\n</html>'; localStorage.setItem(FS_PREFIX+proj, JSON.stringify(fs)); editor.setValue(fs[name]); window.currentFile=name; await saveToServer(proj,name,fs[name]); setStatus('New file '+name); renderProjects();
+}
+
+// Save
+document.getElementById('saveBtn').onclick = async ()=>{ const proj=window.currentProject||'default'; const file=window.currentFile||'index.html'; const content=editor.getValue(); await saveToServer(proj,file,content); setStatus('Saved'); }
+
+async function saveToServer(project,path,content){ try{ await fetch('/api/files/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project,path,content})}); }catch(e){ console.error(e); } }
+
+// Auto-save
+let timer=null; editor.on('change', ()=>{ setStatus('Saving...'); clearTimeout(timer); timer = setTimeout(async ()=>{ const proj=window.currentProject||'default'; const file=window.currentFile||'index.html'; const content=editor.getValue(); const fs=JSON.parse(localStorage.getItem(FS_PREFIX+proj)||'{}'); fs[file]=content; localStorage.setItem(FS_PREFIX+proj, JSON.stringify(fs)); await saveToServer(proj,file,content); setStatus('Saved'); },800); });
+
+// Preview
+document.getElementById('previewBtn').onclick = ()=>{ const blob=new Blob([editor.getValue()], { type:'text/html' }); document.getElementById('previewFrame').src = URL.createObjectURL(blob); }
+document.getElementById('openPreviewTab').onclick = ()=>{ window.open(document.getElementById('previewFrame').src,'_blank'); }
+
+// Upload
+document.getElementById('uploadBtn').onclick = ()=>{ const inp=document.createElement('input'); inp.type='file'; inp.onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const fd=new FormData(); fd.append('project', window.currentProject||'default'); fd.append('file', f); const res = await fetch('/api/upload',{method:'POST',body:fd}); const j=await res.json(); if(j.ok) setStatus('Uploaded '+j.name); else setStatus('Upload failed'); }; inp.click(); }
+
+// Exec / Run saved file
+const socket = io();
+socket.on('run:output', d=>{ appendConsole(d.type+': '+d.text); });
+socket.on('run:exit', d=>{ appendConsole('[exit] code:'+d.code); });
+document.getElementById('runBtn').onclick = async ()=>{ const proj=window.currentProject||'default'; const file=window.currentFile||'index.html'; const r = await fetch('/api/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ project:proj, path:file }) }); const j = await r.json(); if(!j.ok) appendConsole('Run failed: '+(j.error||'err')); }
+document.getElementById('execBtn').onclick = ()=>{ const cmd=document.getElementById('cmdInput').value.trim(); appendConsole('$ '+cmd); appendConsole('Use run for saved js/py files.'); }
+
+function appendConsole(t){ const c=document.getElementById('console'); c.innerText += '\n'+t; c.scrollTop=c.scrollHeight; }
+
+// GitHub OAuth login (popup)
+document.getElementById('gitLoginBtn').onclick = ()=>{
+  const w = window.open('/auth/github','gh_oauth','width=900,height=700');
+  window.addEventListener('message', function onMsg(e){ if(e.data && e.data.ok && e.data.provider==='github'){ window.userId = e.data.userId; setStatus('GitHub logged in'); window.removeEventListener('message', onMsg); } });
+}
+
+// Git panel toggle & clone/push
+document.getElementById('gitPanelBtn').onclick = ()=>{ const el=document.getElementById('gitPanel'); el.style.display = (el.style.display==='none'?'block':'none'); }
+document.getElementById('doClone').onclick = async ()=>{ const url=document.getElementById('cloneUrl').value.trim(); if(!url){ alert('Repo URL'); return; } const proj = prompt('Project name for clone'); if(!proj) return; const res = await fetch('/api/github/clone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ repo: url, project: proj, userId: window.userId })}); const j=await res.json(); if(j.ok){ setStatus('Cloned to '+proj); renderProjects(); }else{ alert('Clone failed: '+(j.error||'err')) } }
+document.getElementById('doPush').onclick = async ()=>{ const msg = prompt('Commit message','Update from termux-code'); const proj = window.currentProject || 'default'; const res = await fetch('/api/github/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ project: proj, message: msg, userId: window.userId })}); const j=await res.json(); if(j.ok) setStatus('Pushed'); else alert('Push failed: '+(j.error||'err')); }
+
+// Clone button quick action
+document.getElementById('cloneBtn').onclick = ()=>{ document.getElementById('gitPanel').style.display='block'; }
+
+// theme toggle
+document.getElementById('themeSel').onchange = function(){ const v=this.value; if(v==='light'){ document.documentElement.style.setProperty('--bg','#f6f7fb'); document.documentElement.style.setProperty('--text','#0b1220'); document.documentElement.style.setProperty('--card','#fff'); } else { document.documentElement.style.setProperty('--bg','#0b1220'); document.documentElement.style.setProperty('--text','#e6eef6'); document.documentElement.style.setProperty('--card','#0f1724'); } }
+
+function setStatus(t){ document.getElementById('statusMsg').innerText = t; }
+</script>
+</body>
+</html>
